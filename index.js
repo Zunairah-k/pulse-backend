@@ -4,7 +4,7 @@ const express = require('express');
 const cors = require('cors');
 const admin = require('firebase-admin');
 const twilio = require('twilio'); // MUST COME BEFORE CLIENT
-const serviceAccount = require('./serviceAccountKey.json');
+
 
 const app = express();
 app.get('/test', (req, res) => {
@@ -20,7 +20,7 @@ const client = twilio(
 );
 
 admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount)
+  credential: admin.credential.cert(JSON.parse(process.env.FIREBASE_KEY))
 });
 
 const db = admin.firestore();
