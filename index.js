@@ -54,7 +54,7 @@ function safe(val, fallback = '') {
 
 async function enrichWithPULSEAI(reportId, rawText) {
   try {
-    const res = await fetch('http://localhost:5000/analyze', {
+    const res = await fetch('https://web-production-9ff39.up.railway.app/analyze', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ text: rawText })
@@ -103,7 +103,7 @@ async function enrichWithPULSEAI(reportId, rawText) {
       affected_people: doc.data().affected_people || 0
     }));
 
-    const clusterRes = await fetch('http://localhost:5000/cluster', {
+    const clusterRes = await fetch('https://web-production-9ff39.up.railway.app/cluster', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ reports })
@@ -129,7 +129,7 @@ for (const cluster of clusterData.clusters) {
 }
 
 // Escalate urgency on old unresolved reports
-fetch('http://localhost:5000/escalate', {
+fetch('https://web-production-9ff39.up.railway.app/escalate', {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({ reports: reports })
@@ -194,7 +194,7 @@ async function deleteConversation(senderNumber) {
 // Detect language using AI
 async function detectLanguage(text) {
   try {
-    const res = await fetch('http://localhost:5000/analyze', {
+    const res = await fetch('https://web-production-9ff39.up.railway.app/analyze', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ text })
@@ -382,12 +382,13 @@ async function handleBotConversation(senderNumber, incomingText) {
 async function processVerificationAsync(mediaUrl, senderNumber, task, taskId, volDoc, vol) {
   try {
     console.log(`🤖 Running AI verification for task ${taskId}...`);
+     console.log(`🔗 Image URL: ${mediaUrl}`);  
 
     const authHeader = 'Basic ' + Buffer.from(
       `${process.env.TWILIO_ACCOUNT_SID}:${process.env.TWILIO_AUTH_TOKEN}`
     ).toString('base64');
 
-    const verifyRes = await fetch('http://localhost:5000/verify-proof', {
+    const verifyRes = await fetch('https://web-production-9ff39.up.railway.app/verify-proof', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -425,7 +426,7 @@ async function processVerificationAsync(mediaUrl, senderNumber, task, taskId, vo
       });
 
       await client.messages.create({
-        from: 'whatsapp:+14155238886',
+        from: `whatsapp:${process.env.TWILIO_PHONE_NUMBER}`,
         to: senderNumber,
         body: `✅ Proof verified!\n${v.reason}\nTask complete. Thank you ${vol.name}! 🙏`
       });
@@ -439,7 +440,7 @@ async function processVerificationAsync(mediaUrl, senderNumber, task, taskId, vo
       });
 
       await client.messages.create({
-        from: 'whatsapp:+14155238886',
+        from: `whatsapp:${process.env.TWILIO_PHONE_NUMBER}`,
         to: senderNumber,
         body: `⚠️ Proof not accepted.\nReason: ${v.reason}\nPlease send a clearer photo.`
       });
@@ -449,7 +450,7 @@ async function processVerificationAsync(mediaUrl, senderNumber, task, taskId, vo
     console.error(err);
 
     await client.messages.create({
-      from: 'whatsapp:+14155238886',
+      from: `whatsapp:${process.env.TWILIO_PHONE_NUMBER}`,
       to: senderNumber,
       body: `⚠️ Verification failed. Please try again.`
     });
@@ -496,12 +497,14 @@ app.post('/incoming-message', async (req, res) => {
           }
 
           if (upperText === 'DONE') {
+            await db.collection('tasks').doc(taskId).update({ status: 'awaiting_proof' });
             console.log(`📸 ${volunteer.name} said DONE — requesting proof`);
             res.set('Content-Type', 'text/xml');
             return res.send(`
               <Response>
-                <Message>Almost done, ${volunteer.name}! 
-📸Please send ONE photo showing the completed work.
+            <Message>Almost done, ${volunteer.name}!
+
+📸 Please send ONE photo showing the completed work.
 Our AI will verify it and mark your task complete automatically.</Message>
               </Response>
             `);
@@ -932,6 +935,7 @@ for (const reportId of reportIds) {
 
 if (!bestReport) {
   console.log("No valid report found in cluster");
+    return;
 }
     // Create task
     const taskRef = await db.collection('tasks').add({
@@ -1315,7 +1319,7 @@ async function runEscalation() {
       days_unmet:    doc.data().days_unmet || 0
     }));
 
-    const res = await fetch('http://localhost:5000/escalate', {
+    const res = await fetch('https://web-production-9ff39.up.railway.app/escalate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ reports })
@@ -1326,7 +1330,7 @@ async function runEscalation() {
       console.log(`⬆️ Hourly escalation: ${data.escalated_count} reports escalated`);
 
       // Re-run clustering after escalation
-      const clusterRes = await fetch('http://localhost:5000/cluster', {
+      const clusterRes = await fetch('https://web-production-9ff39.up.railway.app/cluster', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ reports })
@@ -1437,7 +1441,7 @@ app.post('/generate-report', async (req, res) => {
     }
 
     // Call Person A's report generator
-    const flaskRes = await fetch('http://localhost:5000/generate-report', {
+    const flaskRes = await fetch('https://web-production-9ff39.up.railway.app/generate-report', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ cluster, reports: reportsData })
@@ -2263,8 +2267,6 @@ await clusterRef.update({
 });
 
 // ─── START SERVER ────────────────────────────────────────────────────
-
-
 
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
