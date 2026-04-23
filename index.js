@@ -1447,8 +1447,16 @@ app.post('/generate-report', async (req, res) => {
       body: JSON.stringify({ cluster, reports: reportsData })
     });
 
-    const data = await flaskRes.json();
-    console.log(`✅ Report generated for cluster ${cluster_id}`);
+    const text = await flaskRes.text();
+console.log("🔥 AI RESPONSE:", text);
+
+let data;
+try {
+  data = JSON.parse(text);
+} catch (err) {
+  return res.status(500).json({ error: "Invalid AI response", raw: text });
+}
+console.log(`✅ Report generated for cluster ${cluster_id}`);
     res.json(data);
 
   } catch (error) {
