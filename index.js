@@ -1074,25 +1074,22 @@ app.post('/sms-reply', async (req, res) => {
 // START CALL
 app.post("/start-call", async (req, res) => {
   try {
-    await client.calls.create({
-      to: process.env.MY_PHONE_NUMBER,        // 👈 YOUR PHONE HERE
-      from: process.env.TWILIO_REAL_NUMBER,  // 👈 TWILIO NUMBER
-      url: `${process.env.NGROK_URL}/incoming-call`
-     });
-//  twiml: `
-//         <Response>
-//           <Redirect>${process.env.NGROK_URL}/incoming-call</Redirect>
-//         </Response>
-//       `
+    console.log("📞 Triggering call...")
 
+    const call = await client.calls.create({
+      to: process.env.MY_PHONE_NUMBER,
+      from: process.env.TWILIO_REAL_NUMBER,
+      url: `https://pulse-backend-production-cd6d.up.railway.app/incoming-call`
+    })
 
-    console.log("📞 Call triggered!");
-    res.send("Call started");
+    console.log("✅ Call SID:", call.sid)
+
+    res.json({ success: true })
   } catch (err) {
-    console.error("❌ Twilio error:", err.message);
-    res.status(500).send("Call failed");
+    console.error("❌ Twilio error:", err)
+    res.status(500).json({ success: false, error: err.message })
   }
-});
+})
 
 // ─── IVR ROUTES — MULTILINGUAL ──────────────────────────────────────
 
@@ -1100,7 +1097,7 @@ app.all('/incoming-call', (req, res) => {
   res.set('Content-Type', 'text/xml');
   res.send(`
     <Response>
-      <Gather action="${process.env.NGROK_URL}/handle-language" method="POST" numDigits="1" timeout="10">
+      <Gather action="https://pulse-backend-production-cd6d.up.railway.app/handle-language" method="POST" numDigits="1" timeout="10">
         <Say language="hi-IN" voice="Polly.Aditi">
           Namaste. PULSE mein aapka swagat hai.
           Hindi ke liye 1 dabaiye.
@@ -1109,7 +1106,7 @@ app.all('/incoming-call', (req, res) => {
           English ke liye 4 dabaiye.
         </Say>
       </Gather>
-      <Redirect>${process.env.NGROK_URL}/incoming-call</Redirect>
+      <Redirect>https://pulse-backend-production-cd6d.up.railway.app/incoming-call</Redirect>
     </Response>
   `);
 });
@@ -1120,7 +1117,7 @@ app.all('/handle-language', (req, res) => {
   if (!digit) {
     return res.send(`
       <Response>
-        <Redirect>${process.env.NGROK_URL}/incoming-call</Redirect>
+        <Redirect>https://pulse-backend-production-cd6d.up.railway.app/incoming-call</Redirect>
       </Response>
     `);
   }
@@ -1142,13 +1139,13 @@ app.all('/handle-language', (req, res) => {
   res.set('Content-Type', 'text/xml');
   res.send(`
     <Response>
-      <Gather action="${process.env.NGROK_URL}/handle-keypress?lang=${lang.code}&amp;langname=${lang.name}" method="POST" numDigits="1" timeout="10">
+      <Gather action="https://pulse-backend-production-cd6d.up.railway.app/handle-keypress?lang=${lang.code}&amp;langname=${lang.name}" method="POST" numDigits="1" timeout="10">
         <Say language="${lang.code}">
           ${menus[lang.code]}
         </Say>
       </Gather>
        <!-- THIS SAVES YOUR CALL FROM DYING -->
-      <Redirect>${process.env.NGROK_URL}/handle-language</Redirect>
+      <Redirect>https://pulse-backend-production-cd6d.up.railway.app/handle-language</Redirect>
     </Response>
   `);
 });
@@ -1175,7 +1172,7 @@ app.all('/handle-keypress', (req, res) => {
     <Response>
       <Say language="${lang}">${confirms[lang]}</Say>
       <Record
-        action="${process.env.NGROK_URL}/handle-recording?need_type=${needType}&amp;lang=${lang}&amp;langname=${langname}"
+        action="https://pulse-backend-production-cd6d.up.railway.app/handle-recording?need_type=${needType}&amp;lang=${lang}&amp;langname=${langname}"
         method="POST"
         maxLength="30"
         playBeep="true"
