@@ -1076,8 +1076,10 @@ app.post("/start-call", async (req, res) => {
   try {
     console.log("📞 Triggering call...")
 
+    const toNumber = req.body.phone || process.env.MY_PHONE_NUMBER
+
     const call = await client.calls.create({
-      to: process.env.MY_PHONE_NUMBER,
+      to: toNumber,
       from: process.env.TWILIO_REAL_NUMBER,
       url: `https://pulse-backend-production-cd6d.up.railway.app/incoming-call`
     })
