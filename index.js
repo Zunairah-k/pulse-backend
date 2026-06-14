@@ -1074,6 +1074,60 @@ app.post('/sms-reply', async (req, res) => {
     res.status(500).send('Error');
   }
 });
+// ─── VAPI VOICE AGENT WEBHOOK ────────────────────────────────────────
+
+app.post('/vapi-webhook', async (req, res) => {
+  try {
+    const message = req.body?.message;
+
+    if (!message || message.type !== 'end-of-call-report') {
+      return res.json({ success: true });
+    }
+
+    const transcript = message.transcript || '';
+    const summary = message.summary || transcript;
+    const caller = message.customer?.number || 'web-voice-agent';
+    const duration = message.durationSeconds || 0;
+
+    console.log(`🎙️ Voice report | Caller: ${caller} | Duration: ${duration}s`);
+    console.log(`📝 Transcript: ${transcript}`);
+
+    const reportRef = await db.collection('reports').add({
+      raw_text:             transcript,
+      source:               'voice_agent',
+      caller_number:        caller,
+      call_duration_seconds: duration,
+      need_type:            '',
+      urgency_score:        0,
+      location_text:        '',
+      location_lat:         0,
+      location_lng:         0,
+      language:             '',
+      summary:              '',
+      status:               'new',
+      ngo_id:               'default',
+      analyzed:             false,
+      timestamp:            admin.firestore.FieldValue.serverTimestamp()
+    });
+
+    console.log(`✅ Voice report saved: ${reportRef.id}`);
+
+    res.json({ success: true, report_id: reportRef.id });
+
+    setImmediate(async () => {
+      try {
+        await enrichWithPULSEAI(reportRef.id, summary);
+        console.log(`✅ Voice report analyzed: ${reportRef.id}`);
+      } catch (err) {
+        console.error(`❌ Voice AI failed: ${err.message}`);
+      }
+    });
+
+  } catch (err) {
+    console.error('❌ Vapi webhook error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
 // START CALL
 app.post("/start-call", async (req, res) => {
   try {
