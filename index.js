@@ -19,6 +19,9 @@ const client = twilio(
   process.env.TWILIO_AUTH_TOKEN
 );
 
+const firebaseKey = JSON.parse(process.env.FIREBASE_KEY);
+firebaseKey.private_key = firebaseKey.private_key.replace(/\\n/g, '\n');
+
 admin.initializeApp({
   credential: admin.credential.cert(JSON.parse(process.env.FIREBASE_KEY))
 });
