@@ -18,12 +18,12 @@ const client = twilio(
   process.env.TWILIO_ACCOUNT_SID,
   process.env.TWILIO_AUTH_TOKEN
 );
-
 const firebaseKey = JSON.parse(process.env.FIREBASE_KEY);
 firebaseKey.private_key = firebaseKey.private_key.replace(/\\n/g, '\n');
+console.log("Firebase key loaded, project:", firebaseKey.project_id);
 
 admin.initializeApp({
-  credential: admin.credential.cert(JSON.parse(process.env.FIREBASE_KEY))
+  credential: admin.credential.cert(firebaseKey)  // ← use the fixed variable!
 });
 
 const db = admin.firestore();
@@ -2112,7 +2112,7 @@ app.post('/reassign', async (req, res) => {
     const best = scored[0];
 
     // 🔥 STEP 4: REUSE ASSIGN LOGIC
-    const assignRes = await fetch(`http://localhost:${PORT}/assign-volunteer`, {
+    const assignRes = await fetch(`https://pulse-backend-hbrd.onrender.com/assign-volunteer`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -2196,7 +2196,7 @@ app.post('/force-assign', async (req, res) => {
     scored.sort((a, b) => a.distance - b.distance);
     const best = scored[0];
 
-    const assignRes = await fetch(`http://localhost:${PORT}/assign-volunteer`, {
+    const assignRes = await fetch(`https://pulse-backend-hbrd.onrender.com/assign-volunteer`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
